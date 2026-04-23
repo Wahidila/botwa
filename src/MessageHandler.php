@@ -99,6 +99,22 @@ class MessageHandler
             ];
         }
 
+        // Check if message is a command (chat, kirim, broadcast, etc)
+        $commandHandler = new CommandHandler($this->waha);
+        $commandResult = $commandHandler->handle($messageData);
+
+        if ($commandResult['is_command']) {
+            // It's a command - send the command response directly, skip AI
+            if (!empty($commandResult['response'])) {
+                $this->waha->sendMessage($messageData['chatId'], $commandResult['response']);
+                $this->logMessage(
+                    array_merge($messageData, ['text' => $commandResult['response']]),
+                    'outgoing'
+                );
+            }
+            return;
+        }
+
         // Process response chance
         $responseChance = (int) Config::get('bot_response_chance', 100);
         if ($responseChance < 100 && rand(1, 100) > $responseChance) {
