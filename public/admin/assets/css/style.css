@@ -1,0 +1,180 @@
+/* ============================================
+   BotWA "Cimol" Admin Panel - Custom Styles
+   ============================================ */
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #1f2937;
+}
+::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* Smooth transitions */
+* {
+    transition-property: background-color, border-color, color, opacity;
+    transition-duration: 150ms;
+    transition-timing-function: ease-in-out;
+}
+
+/* Sidebar active animation */
+.sidebar-link.active {
+    position: relative;
+}
+.sidebar-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    background: #818cf8;
+    border-radius: 0 3px 3px 0;
+}
+
+/* Card hover effect */
+.card-hover:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Pulse animation for status dots */
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+.pulse-dot {
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Toggle switch */
+.toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: #374151;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+.toggle-switch.active {
+    background: #6366f1;
+}
+.toggle-switch.active::after {
+    transform: translateX(20px);
+}
+
+/* Textarea auto-resize feel */
+textarea {
+    min-height: 80px;
+}
+
+/* Table row hover */
+.table-row-hover:hover {
+    background-color: rgba(75, 85, 99, 0.3) !important;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Chat bubble styles */
+.chat-bubble-user {
+    background: #4f46e5;
+    border-radius: 18px 18px 4px 18px;
+    max-width: 80%;
+}
+.chat-bubble-bot {
+    background: #374151;
+    border-radius: 18px 18px 18px 4px;
+    max-width: 80%;
+}
+
+/* Typing indicator */
+@keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-4px); }
+}
+.typing-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: #9ca3af;
+    border-radius: 50%;
+    margin: 0 2px;
+}
+.typing-dot:nth-child(1) { animation: typing 1.4s infinite 0s; }
+.typing-dot:nth-child(2) { animation: typing 1.4s infinite 0.2s; }
+.typing-dot:nth-child(3) { animation: typing 1.4s infinite 0.4s; }
+
+/* Code block */
+.code-block {
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Badge pulse for active items */
+.badge-active {
+    position: relative;
+}
+.badge-active::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Responsive sidebar */
+@media (max-width: 1023px) {
+    .sidebar-open {
+        transform: translateX(0) !important;
+    }
+}
+
+/* Print styles */
+@media print {
+    aside, header, footer, button, .no-print {
+        display: none !important;
+    }
+    main {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}

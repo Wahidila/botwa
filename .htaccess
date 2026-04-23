@@ -1,0 +1,40 @@
+# ============================================
+# BotWA "Cimol" - Root .htaccess
+# ============================================
+
+# Prevent directory listing
+Options -Indexes
+
+# Deny access to hidden files (.env, .git, etc)
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Allow .htaccess itself to work
+<Files ".htaccess">
+    Order allow,deny
+    Allow from all
+</Files>
+
+# Deny access to sensitive files
+<FilesMatch "\.(sql|log|env|md|lock)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block access to sensitive directories
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^src/ - [F,L]
+    RewriteRule ^database/ - [F,L]
+    RewriteRule ^logs/ - [F,L]
+    RewriteRule ^vendor/ - [F,L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>

@@ -1,0 +1,7 @@
+# Admin Panel Security
+Options -Indexes
+
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

@@ -1,0 +1,43 @@
+# ============================================
+# BotWA "Cimol" - Security & Routing
+# ============================================
+
+# Prevent directory listing
+Options -Indexes
+
+# Deny access to hidden files (.env, .git, etc)
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Deny access to sensitive file types
+<FilesMatch "\.(sql|log|env|md|json|lock|xml)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block access to src directory (should be outside document root, but just in case)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^src/ - [F,L]
+    RewriteRule ^database/ - [F,L]
+    RewriteRule ^logs/ - [F,L]
+    RewriteRule ^vendor/ - [F,L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# PHP settings (if allowed)
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_flag log_errors On
+    php_value max_execution_time 60
+    php_value memory_limit 128M
+</IfModule>
