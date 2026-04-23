@@ -80,17 +80,31 @@ class MessageHandler
         );
 
         // Check if message triggers the bot
-        // In private chat with registered member: always triggered, no trigger word needed
         $isPrivateChat = !($messageData['isGroup'] ?? false);
         $triggerResult = $this->triggers->check($messageData['text']);
 
-        if (!$triggerResult['triggered'] && !$isPrivateChat) {
-            Logger::debug("Message not triggered in group, skipping");
+        // Determine if bot should respond without trigger
+        $alwaysRespond = false;
+
+        // Private chat with registered member: always respond
+        if ($isPrivateChat) {
+            $alwaysRespond = true;
+        }
+
+        // Configured group: always respond (no trigger needed)
+        $configuredGroupId = Config::get('waha_group_id', '');
+        if (!empty($configuredGroupId) && ($messageData['chatId'] ?? '') === $configuredGroupId) {
+            $alwaysRespond = true;
+        }
+
+        // If not always-respond and no trigger matched, skip
+        if (!$triggerResult['triggered'] && !$alwaysRespond) {
+            Logger::debug("Message not triggered, skipping");
             return;
         }
 
-        // Force trigger for private chats
-        if ($isPrivateChat && !$triggerResult['triggered']) {
+        // Force trigger result for non-triggered but always-respond chats
+        if (!$triggerResult['triggered'] && $alwaysRespond) {
             $triggerResult = [
                 'triggered' => true,
                 'trigger' => null,
