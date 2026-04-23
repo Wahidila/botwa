@@ -26,10 +26,19 @@ if (isset($_GET['action'])) {
     if ($action === 'test_firecrawl') {
         try {
             $fc = new \BotWA\FirecrawlSearch();
+            if (!$fc->isAvailable()) {
+                echo json_encode(['success' => false, 'message' => 'Firecrawl not configured. Set API key and enable it in settings first.']);
+                exit;
+            }
             $result = $fc->testConnection();
-            echo json_encode($result);
-        } catch (\Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            $json = json_encode($result);
+            if ($json === false) {
+                echo json_encode(['success' => false, 'message' => 'JSON encode error: ' . json_last_error_msg()]);
+            } else {
+                echo $json;
+            }
+        } catch (\Throwable $e) {
+            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
         }
         exit;
     }

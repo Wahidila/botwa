@@ -233,19 +233,39 @@ class FirecrawlSearch
             return ['success' => false, 'message' => 'Firecrawl API key is empty.'];
         }
 
-        $result = $this->search('test');
+        // Direct API call with minimal query
+        $response = $this->request([
+            'query' => 'Indonesia news today',
+            'limit' => 2,
+        ]);
 
-        if ($result !== null) {
+        if ($response === null) {
+            return [
+                'success' => false,
+                'message' => 'Firecrawl connection failed. No response from API.',
+            ];
+        }
+
+        if (isset($response['error'])) {
+            return [
+                'success' => false,
+                'message' => 'Firecrawl error: ' . (is_string($response['error']) ? $response['error'] : json_encode($response['error'])),
+            ];
+        }
+
+        if (isset($response['data']) && is_array($response['data'])) {
+            $count = count($response['data']);
+            $firstTitle = $response['data'][0]['title'] ?? 'N/A';
             return [
                 'success' => true,
-                'message' => 'Firecrawl connected! Search working.',
-                'preview' => mb_substr($result, 0, 300),
+                'message' => "Firecrawl connected! Got {$count} results. First: \"{$firstTitle}\"",
             ];
         }
 
         return [
             'success' => false,
-            'message' => 'Firecrawl search failed. Check API key.',
+            'message' => 'Firecrawl: unexpected response format.',
+            'debug' => mb_substr(json_encode($response), 0, 500),
         ];
     }
 }
