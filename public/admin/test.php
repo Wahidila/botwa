@@ -14,9 +14,8 @@ if (isset($_GET['action'])) {
 
     if ($action === 'test_ai') {
         try {
-            $ai = \BotWA\AIFactory::create();
+            $ai = new \BotWA\AIProvider();
             $result = $ai->testConnection();
-            $result['provider_type'] = \BotWA\AIFactory::getProviderType();
             echo json_encode($result);
         } catch (\Exception $e) {
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
@@ -90,8 +89,8 @@ if (isset($_GET['action'])) {
             }
             $messages[] = ['role' => 'user', 'content' => $testMessage];
 
-            // Call AI (auto-selects provider based on settings)
-            $ai = \BotWA\AIFactory::create();
+            // Call AI
+            $ai = new \BotWA\AIProvider();
             $result = $ai->chat($messages);
 
             echo json_encode([

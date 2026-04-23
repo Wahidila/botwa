@@ -18,14 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $messageType = 'error';
     } else {
         // Update settings
-        $fields = ['ai_provider_type', 'ai_base_url', 'ai_api_key', 'ai_model', 'ai_temperature', 'ai_max_tokens', 'ai_top_p', 'ai_frequency_penalty', 'ai_presence_penalty'];
+        $fields = ['ai_base_url', 'ai_api_key', 'ai_model', 'ai_temperature', 'ai_max_tokens', 'ai_top_p', 'ai_frequency_penalty', 'ai_presence_penalty'];
         foreach ($fields as $field) {
             if (isset($_POST[$field])) {
                 \BotWA\Config::set($field, $_POST[$field]);
             }
         }
-        // Handle web search checkbox
-        \BotWA\Config::set('ai_web_search', isset($_POST['ai_web_search']) ? '1' : '0');
         \BotWA\Config::clearCache();
         $message = 'Settings saved successfully!';
         $messageType = 'success';
@@ -33,8 +31,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Load current values
-$aiProviderType = \BotWA\Config::get('ai_provider_type', 'openai_compatible');
-$aiWebSearch = \BotWA\Config::get('ai_web_search', false);
 $aiBaseUrl = \BotWA\Config::get('ai_base_url', '');
 $aiApiKey = \BotWA\Config::get('ai_api_key', '');
 $aiModel = \BotWA\Config::get('ai_model', '');
@@ -69,74 +65,6 @@ adminHeader('AI Settings', 'settings');
 
 <form method="POST" action="" id="settings-form">
     <input type="hidden" name="csrf_token" value="<?= \BotWA\AdminAuth::generateCsrfToken() ?>">
-
-    <!-- Provider Type Card (full width) -->
-    <div class="mb-6 bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-700">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="text-base font-semibold text-white">Provider Type</h3>
-                    <p class="text-xs text-gray-400 mt-0.5">Choose your AI provider engine</p>
-                </div>
-            </div>
-        </div>
-        <div class="p-5">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Provider Type Selection -->
-                <label class="relative cursor-pointer">
-                    <input type="radio" name="ai_provider_type" value="openai_compatible" class="peer sr-only" <?= $aiProviderType === 'openai_compatible' ? 'checked' : '' ?> onchange="toggleProviderUI()">
-                    <div class="p-4 rounded-xl border-2 border-gray-600 peer-checked:border-indigo-500 peer-checked:bg-indigo-900/20 hover:border-gray-500 transition-all">
-                        <div class="flex items-center gap-3 mb-2">
-                            <span class="text-2xl">🔗</span>
-                            <div>
-                                <p class="font-semibold text-white">OpenAI Compatible</p>
-                                <p class="text-xs text-gray-400">Claude, GPT, Gemini via OpenRouter, etc</p>
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-500">Standard /v1/chat/completions API. Works with OpenRouter, OpenAI, Anthropic proxy, and any OpenAI-compatible endpoint.</p>
-                    </div>
-                </label>
-
-                <label class="relative cursor-pointer">
-                    <input type="radio" name="ai_provider_type" value="kimi" class="peer sr-only" <?= $aiProviderType === 'kimi' ? 'checked' : '' ?> onchange="toggleProviderUI()">
-                    <div class="p-4 rounded-xl border-2 border-gray-600 peer-checked:border-cyan-500 peer-checked:bg-cyan-900/20 hover:border-gray-500 transition-all">
-                        <div class="flex items-center gap-3 mb-2">
-                            <span class="text-2xl">🌙</span>
-                            <div>
-                                <p class="font-semibold text-white">Kimi (Moonshot AI)</p>
-                                <p class="text-xs text-gray-400">Kimi K2.5 / K2.6 with web search</p>
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-500">Native $web_search built-in tool. Bot can search the internet in real-time. Base URL: api.moonshot.cn/v1</p>
-                    </div>
-                </label>
-            </div>
-
-            <!-- Web Search Toggle (only for Kimi) -->
-            <div id="web-search-toggle" class="mt-4 p-4 rounded-xl bg-cyan-900/10 border border-cyan-800/30 <?= $aiProviderType !== 'kimi' ? 'hidden' : '' ?>">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
-                        <div>
-                            <p class="text-sm font-medium text-white">Web Search ($web_search)</p>
-                            <p class="text-xs text-gray-400">Enable Kimi's built-in web search. Bot can search the internet to answer questions.</p>
-                        </div>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="ai_web_search" value="1" class="sr-only peer" <?= $aiWebSearch ? 'checked' : '' ?>>
-                        <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
-                    </label>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
 
@@ -315,16 +243,6 @@ adminHeader('AI Settings', 'settings');
 </form>
 
 <script>
-function toggleProviderUI() {
-    const isKimi = document.querySelector('input[name="ai_provider_type"][value="kimi"]').checked;
-    const webSearchToggle = document.getElementById('web-search-toggle');
-    if (isKimi) {
-        webSearchToggle.classList.remove('hidden');
-    } else {
-        webSearchToggle.classList.add('hidden');
-    }
-}
-
 function toggleApiKey() {
     const input = document.getElementById('ai_api_key');
     const eyeIcon = document.getElementById('eye-icon');

@@ -43,12 +43,6 @@ class PersonalityEngine
         // 4. Add current context info
         $parts[] = $this->buildCurrentContext($messageData);
 
-        // 5. Add web search capability notice if enabled
-        $webSearchContext = $this->buildWebSearchContext();
-        if (!empty($webSearchContext)) {
-            $parts[] = $webSearchContext;
-        }
-
         return implode("\n\n", $parts);
     }
 
@@ -171,29 +165,6 @@ class PersonalityEngine
         $lines[] = "- JANGAN PERNAH menyebut nomor telepon siapapun. Kamu TIDAK TAHU nomor telepon.";
 
         return implode("\n", $lines);
-    }
-
-    /**
-     * Build web search capability context
-     */
-    private function buildWebSearchContext(): string
-    {
-        $providerType = Config::get('ai_provider_type', 'openai_compatible');
-        $webSearchEnabled = (bool) Config::get('ai_web_search', false);
-
-        if ($providerType !== 'kimi' || !$webSearchEnabled) {
-            return '';
-        }
-
-        return implode("\n", [
-            "KEMAMPUAN KHUSUS - PENCARIAN WEB:",
-            "- Kamu BISA mencari informasi terbaru di internet.",
-            "- Kalau ada yang minta cari berita, info terkini, atau hal yang butuh data terbaru, GUNAKAN kemampuan search kamu.",
-            "- Jangan bilang kamu tidak bisa search atau tidak punya akses internet.",
-            "- Tetap jawab dengan gaya bahasa kamu yang casual dan Gen Z.",
-            "- Rangkum hasil pencarian dengan bahasa kamu sendiri, jangan copy-paste mentah.",
-            "- Kalau diminta cari sesuatu, langsung cari, jangan tanya balik 'mau cari apa'.",
-        ]);
     }
 
     /**
