@@ -125,8 +125,17 @@ class MessageHandler
         // Show typing indicator
         $this->simulateTyping($messageData['chatId']);
 
+        // Check if message needs web search (Firecrawl)
+        $searchContext = null;
+        $firecrawl = new FirecrawlSearch();
+        if ($firecrawl->needsSearch($messageData['text'])) {
+            $query = $firecrawl->extractQuery($messageData['text']);
+            Logger::info("Web search triggered", ['query' => $query]);
+            $searchContext = $firecrawl->search($query);
+        }
+
         // Build AI messages
-        $aiMessages = $this->buildAIMessages($messageData, $triggerResult);
+        $aiMessages = $this->buildAIMessages($messageData, $triggerResult, $searchContext);
 
         // Get AI response
         $aiResult = $this->ai->chat($aiMessages);
@@ -275,7 +284,7 @@ class MessageHandler
     /**
      * Build AI messages array with system prompt, memory, and context
      */
-    private function buildAIMessages(array $messageData, array $triggerResult): array
+    private function buildAIMessages(array $messageData, array $triggerResult, ?string $searchContext = null): array
     {
         $messages = [];
 
@@ -297,7 +306,12 @@ class MessageHandler
         $systemPrompt = $this->personality->buildSystemPrompt($messageData, $groupParticipants);
         $messages[] = ['role' => 'system', 'content' => $systemPrompt];
 
-        // 2. Relevant memories
+        // 2. Web search results (if any)
+        if (!empty($searchContext)) {
+            $messages[] = ['role' => 'system', 'content' => $searchContext];
+        }
+
+        // 3. Relevant memories
         $memories = $this->memory->getRelevantMemories($messageData['text']);
         if (!empty($memories)) {
             $memoryContext = "KONTEKS YANG KAMU INGAT:\n";
@@ -307,7 +321,7 @@ class MessageHandler
             $messages[] = ['role' => 'system', 'content' => $memoryContext];
         }
 
-        // 3. Active skills context
+        // 4. Active skills context
         $skillContext = $this->skills->getActiveSkillsContext($messageData['text'], $triggerResult);
         if (!empty($skillContext)) {
             $messages[] = ['role' => 'system', 'content' => $skillContext];

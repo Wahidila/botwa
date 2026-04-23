@@ -49,6 +49,12 @@ INSERT INTO settings (setting_key, setting_value, setting_type, category, descri
 ('ai_frequency_penalty', '0.3', 'number', 'ai_provider', 'Frequency penalty to reduce repetition'),
 ('ai_presence_penalty', '0.3', 'number', 'ai_provider', 'Presence penalty for topic diversity');
 
+/* Firecrawl Web Search settings */
+INSERT INTO settings (setting_key, setting_value, setting_type, category, description) VALUES
+('firecrawl_api_key', '', 'string', 'ai_provider', 'Firecrawl API key for web search'),
+('firecrawl_enabled', '1', 'boolean', 'ai_provider', 'Enable web search via Firecrawl'),
+('firecrawl_max_results', '5', 'number', 'ai_provider', 'Max search results to fetch (1-10)');
+
 /* WAHA settings */
 INSERT INTO settings (setting_key, setting_value, setting_type, category, description) VALUES
 ('waha_api_url', '', 'string', 'waha', 'WAHA API base URL (e.g. https://waha-xxx.sgp.../api)'),

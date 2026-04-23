@@ -18,12 +18,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $messageType = 'error';
     } else {
         // Update settings
-        $fields = ['ai_base_url', 'ai_api_key', 'ai_model', 'ai_temperature', 'ai_max_tokens', 'ai_top_p', 'ai_frequency_penalty', 'ai_presence_penalty'];
+        $fields = ['ai_base_url', 'ai_api_key', 'ai_model', 'ai_temperature', 'ai_max_tokens', 'ai_top_p', 'ai_frequency_penalty', 'ai_presence_penalty', 'firecrawl_api_key', 'firecrawl_max_results'];
         foreach ($fields as $field) {
             if (isset($_POST[$field])) {
                 \BotWA\Config::set($field, $_POST[$field]);
             }
         }
+        \BotWA\Config::set('firecrawl_enabled', isset($_POST['firecrawl_enabled']) ? '1' : '0');
         \BotWA\Config::clearCache();
         $message = 'Settings saved successfully!';
         $messageType = 'success';
@@ -39,6 +40,11 @@ $aiMaxTokens = \BotWA\Config::get('ai_max_tokens', 1024);
 $aiTopP = \BotWA\Config::get('ai_top_p', 1.0);
 $aiFrequencyPenalty = \BotWA\Config::get('ai_frequency_penalty', 0.0);
 $aiPresencePenalty = \BotWA\Config::get('ai_presence_penalty', 0.0);
+
+// Firecrawl settings
+$firecrawlApiKey = \BotWA\Config::get('firecrawl_api_key', '');
+$firecrawlEnabled = \BotWA\Config::get('firecrawl_enabled', false);
+$firecrawlMaxResults = \BotWA\Config::get('firecrawl_max_results', 5);
 
 adminHeader('AI Settings', 'settings');
 ?>
@@ -217,6 +223,85 @@ adminHeader('AI Settings', 'settings');
 
     </div>
 
+    <!-- Firecrawl Web Search Card -->
+    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden mb-6">
+        <div class="px-5 py-4 border-b border-gray-700">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-white">Web Search (Firecrawl)</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Enable bot to search the internet for real-time info</p>
+                    </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="firecrawl_enabled" value="1" class="sr-only peer" <?= $firecrawlEnabled ? 'checked' : '' ?>>
+                    <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
+                </label>
+            </div>
+        </div>
+        <div class="p-5 space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <!-- Firecrawl API Key -->
+                <div>
+                    <label for="firecrawl_api_key" class="block text-sm font-medium text-gray-300 mb-1.5">Firecrawl API Key</label>
+                    <div class="relative">
+                        <input type="password" id="firecrawl_api_key" name="firecrawl_api_key"
+                               value="<?= htmlspecialchars($firecrawlApiKey) ?>"
+                               placeholder="fc-..."
+                               class="w-full px-3 py-2.5 pr-10 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors">
+                        <button type="button" onclick="toggleFirecrawlKey()" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-200">
+                            <svg id="fc-eye" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="mt-1.5 text-xs text-gray-500">Get your key at <a href="https://www.firecrawl.dev" target="_blank" class="text-orange-400 hover:underline">firecrawl.dev</a></p>
+                </div>
+
+                <!-- Max Results -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="firecrawl_max_results" class="text-sm font-medium text-gray-300">Max Search Results</label>
+                        <span id="fc-results-value" class="text-xs font-mono text-orange-400"><?= htmlspecialchars($firecrawlMaxResults) ?></span>
+                    </div>
+                    <input type="number" id="firecrawl_max_results" name="firecrawl_max_results"
+                           value="<?= htmlspecialchars($firecrawlMaxResults) ?>"
+                           min="1" max="10"
+                           class="w-full px-3 py-2.5 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                           oninput="document.getElementById('fc-results-value').textContent = this.value">
+                    <p class="mt-1.5 text-xs text-gray-500">More results = better answers but uses more credits (2 credits per 10 results)</p>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="p-3 rounded-lg bg-orange-900/10 border border-orange-800/30">
+                <p class="text-xs text-gray-400">
+                    <span class="text-orange-400 font-medium">How it works:</span>
+                    When someone asks the bot to search (e.g. "cil cari berita gempa"), the bot will search the web via Firecrawl, then use Claude to summarize the results in Gen Z style.
+                </p>
+                <p class="text-xs text-gray-500 mt-1">
+                    Trigger words: cari, search, berita, news, terbaru, harga, cuaca, trending, viral, dll.
+                </p>
+            </div>
+
+            <!-- Test Firecrawl -->
+            <button type="button" onclick="testFirecrawl()" id="fc-test-btn"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 text-sm font-medium rounded-lg border border-orange-700/50 transition-colors">
+                <svg id="fc-test-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <span id="fc-test-text">Test Firecrawl Search</span>
+            </button>
+            <div id="fc-test-result" class="hidden mt-2 p-3 rounded-lg text-xs font-mono whitespace-pre-wrap break-words max-h-48 overflow-y-auto"></div>
+        </div>
+    </div>
+
     <!-- Action Buttons -->
     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <button type="submit"
@@ -243,6 +328,42 @@ adminHeader('AI Settings', 'settings');
 </form>
 
 <script>
+function toggleFirecrawlKey() {
+    const input = document.getElementById('firecrawl_api_key');
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+function testFirecrawl() {
+    const btn = document.getElementById('fc-test-btn');
+    const text = document.getElementById('fc-test-text');
+    const result = document.getElementById('fc-test-result');
+
+    btn.disabled = true;
+    text.textContent = 'Testing...';
+
+    fetch('test.php?action=test_firecrawl')
+    .then(r => r.json())
+    .then(data => {
+        result.classList.remove('hidden', 'bg-green-900/30', 'text-green-400', 'bg-red-900/30', 'text-red-400');
+        if (data.success) {
+            result.classList.add('bg-green-900/30', 'text-green-400');
+            result.textContent = data.message + '\n\n' + (data.preview || '');
+        } else {
+            result.classList.add('bg-red-900/30', 'text-red-400');
+            result.textContent = data.message || data.error || 'Test failed';
+        }
+    })
+    .catch(err => {
+        result.classList.remove('hidden');
+        result.classList.add('bg-red-900/30', 'text-red-400');
+        result.textContent = 'Error: ' + err.message;
+    })
+    .finally(() => {
+        btn.disabled = false;
+        text.textContent = 'Test Firecrawl Search';
+    });
+}
+
 function toggleApiKey() {
     const input = document.getElementById('ai_api_key');
     const eyeIcon = document.getElementById('eye-icon');

@@ -43,6 +43,20 @@ class PersonalityEngine
         // 4. Add current context info
         $parts[] = $this->buildCurrentContext($messageData);
 
+        // 5. Add web search capability notice
+        $firecrawlEnabled = (bool) Config::get('firecrawl_enabled', false);
+        $firecrawlKey = Config::get('firecrawl_api_key', '');
+        if ($firecrawlEnabled && !empty($firecrawlKey)) {
+            $parts[] = implode("\n", [
+                "KEMAMPUAN PENCARIAN WEB:",
+                "- Kamu BISA mencari informasi terbaru di internet.",
+                "- Kalau ada hasil pencarian web yang diberikan di atas, GUNAKAN data itu untuk menjawab.",
+                "- Rangkum hasil pencarian dengan gaya bahasa kamu sendiri (casual, Gen Z).",
+                "- Jangan bilang kamu tidak bisa search internet - kamu BISA.",
+                "- Sebutkan sumber jika relevan tapi jangan tampilkan URL mentah yang panjang.",
+            ]);
+        }
+
         return implode("\n\n", $parts);
     }
 

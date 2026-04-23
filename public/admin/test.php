@@ -23,6 +23,17 @@ if (isset($_GET['action'])) {
         exit;
     }
 
+    if ($action === 'test_firecrawl') {
+        try {
+            $fc = new \BotWA\FirecrawlSearch();
+            $result = $fc->testConnection();
+            echo json_encode($result);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     if ($action === 'test_waha') {
         try {
             $waha = new \BotWA\WahaClient();
