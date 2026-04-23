@@ -5,6 +5,10 @@
  * URL: https://botwa.malangcreative.com/webhook.php
  */
 
+// Extend execution time for search + AI processing
+@set_time_limit(120);
+@ini_set('max_execution_time', '120');
+
 // Bootstrap langsung dari root
 require_once __DIR__ . '/src/Bootstrap.php';
 \BotWA\Bootstrap::init();

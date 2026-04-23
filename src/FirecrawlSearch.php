@@ -117,13 +117,10 @@ class FirecrawlSearch
 
         $payload = [
             'query' => $query,
-            'limit' => $this->maxResults,
+            'limit' => min($this->maxResults, 3),
             'lang' => 'id',
             'country' => 'id',
-            'scrapeOptions' => [
-                'formats' => ['markdown'],
-                'onlyMainContent' => true,
-            ],
+            'timeout' => 20000,
         ];
 
         $response = $this->request($payload);
@@ -221,7 +218,7 @@ class FirecrawlSearch
             CURLOPT_URL => self::API_URL,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
-            CURLOPT_TIMEOUT => 45,
+            CURLOPT_TIMEOUT => 30,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_POSTFIELDS => json_encode($data),
             CURLOPT_HTTPHEADER => [

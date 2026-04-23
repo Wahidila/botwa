@@ -125,19 +125,33 @@ class MessageHandler
         // Show typing indicator
         $this->simulateTyping($messageData['chatId']);
 
+        // Extend PHP execution time for search + AI calls
+        @set_time_limit(120);
+
         // Check if message needs web search (Firecrawl)
         $searchContext = null;
         $firecrawl = new FirecrawlSearch();
         if ($firecrawl->needsSearch($messageData['text'])) {
             $query = $firecrawl->extractQuery($messageData['text']);
             Logger::info("Web search triggered", ['query' => $query]);
-            $searchContext = $firecrawl->search($query);
+            try {
+                $searchContext = $firecrawl->search($query);
+                if ($searchContext) {
+                    Logger::info("Web search results injected", ['length' => mb_strlen($searchContext)]);
+                } else {
+                    Logger::warning("Web search returned no results");
+                }
+            } catch (\Throwable $e) {
+                Logger::error("Web search failed: " . $e->getMessage());
+                $searchContext = null;
+            }
         }
 
         // Build AI messages
         $aiMessages = $this->buildAIMessages($messageData, $triggerResult, $searchContext);
 
         // Get AI response
+        Logger::debug("Sending to AI", ['messages_count' => count($aiMessages)]);
         $aiResult = $this->ai->chat($aiMessages);
 
         if (!$aiResult || empty($aiResult['content'])) {
