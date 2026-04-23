@@ -92,10 +92,26 @@ class MessageHandler
         }
 
         // Configured group: always respond (no trigger needed)
-        $configuredGroupId = Config::get('waha_group_id', '');
-        if (!empty($configuredGroupId) && ($messageData['chatId'] ?? '') === $configuredGroupId) {
+        $configuredGroupId = trim(Config::get('waha_group_id', ''));
+        $currentChatId = $messageData['chatId'] ?? '';
+
+        // Normalize: ensure both have @g.us suffix for comparison
+        if (!empty($configuredGroupId) && !str_contains($configuredGroupId, '@')) {
+            $configuredGroupId .= '@g.us';
+        }
+
+        if (!empty($configuredGroupId) && $currentChatId === $configuredGroupId) {
             $alwaysRespond = true;
         }
+
+        Logger::debug("Trigger check", [
+            'isPrivateChat' => $isPrivateChat,
+            'triggered' => $triggerResult['triggered'],
+            'alwaysRespond' => $alwaysRespond,
+            'currentChatId' => $currentChatId,
+            'configuredGroupId' => $configuredGroupId,
+            'match' => ($currentChatId === $configuredGroupId),
+        ]);
 
         // If not always-respond and no trigger matched, skip
         if (!$triggerResult['triggered'] && !$alwaysRespond) {
