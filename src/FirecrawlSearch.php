@@ -7,8 +7,6 @@ namespace BotWA;
  * 
  * Uses POST https://api.firecrawl.dev/v2/search to search the web
  * and get clean markdown content from results.
- * 
- * Free plan: 500 credits total. Search = 2 credits per 10 results.
  */
 class FirecrawlSearch
 {
@@ -20,12 +18,14 @@ class FirecrawlSearch
 
     /** Keywords that indicate user wants to search the web */
     private const SEARCH_KEYWORDS = [
-        'cari', 'cariin', 'carikan', 'search', 'googling', 'google',
-        'berita', 'news', 'kabar', 'info terbaru', 'update terbaru',
-        'apa itu', 'siapa itu', 'kapan', 'dimana',
-        'terbaru', 'hari ini', 'terkini', 'latest',
-        'harga', 'cuaca', 'jadwal', 'skor', 'hasil',
+        'cari ', 'cariin ', 'carikan ', 'search ',
+        'googling', 'google ',
+        'berita ', 'news ',
+        'info terbaru', 'update terbaru', 'kabar terbaru',
+        'terbaru hari ini', 'terkini',
+        'harga ', 'cuaca ', 'jadwal ', 'skor ',
         'trending', 'viral',
+        'apa itu ', 'siapa itu ',
     ];
 
     public function __construct()
@@ -36,7 +36,7 @@ class FirecrawlSearch
     }
 
     /**
-     * Check if web search is available (has API key and enabled)
+     * Check if web search is available
      */
     public function isAvailable(): bool
     {
@@ -52,7 +52,9 @@ class FirecrawlSearch
             return false;
         }
 
-        $text = strtolower(trim($messageText));
+        // Remove trigger words first
+        $text = preg_replace('/^(hey\s+)?(cil|bocil|cimol|mol)\s*[,.]?\s*/i', '', $messageText);
+        $text = strtolower(trim($text));
 
         foreach (self::SEARCH_KEYWORDS as $keyword) {
             if (str_contains($text, $keyword)) {
@@ -64,26 +66,37 @@ class FirecrawlSearch
     }
 
     /**
-     * Extract search query from message text
-     * Removes trigger words and search keywords to get the actual query
+     * Build a good search query from user message
+     * Keep the intent clear, add date context
      */
     public function extractQuery(string $messageText): string
     {
         $text = trim($messageText);
 
-        // Remove bot trigger words
+        // Remove bot trigger words only
         $text = preg_replace('/^(hey\s+)?(cil|bocil|cimol|mol)\s*[,.]?\s*/i', '', $text);
 
-        // Remove common search prefixes
-        $text = preg_replace('/^(tolong\s+)?(cari(?:in|kan)?|search|googling?|google)\s*/i', '', $text);
-        $text = preg_replace('/^(apa\s+)?(berita|news|kabar|info)\s*(terbaru|terkini|hari\s*ini)?\s*(tentang|soal|mengenai)?\s*/i', '', $text);
+        // Remove only the command prefix (cari/search), keep the rest intact
+        $text = preg_replace('/^(tolong\s+)?(cari(?:in|kan)?|search|googling?)\s+/i', '', $text);
 
         $text = trim($text);
 
-        // If cleaned text is too short, use original (minus trigger words)
-        if (mb_strlen($text) < 3) {
+        // If text mentions "hari ini" / "terbaru" / "terkini", append today's date for better results
+        $hasTimeRef = preg_match('/hari\s*ini|terbaru|terkini|latest|today/i', $text);
+        if ($hasTimeRef) {
+            $today = date('j F Y'); // e.g. "23 April 2026"
+            $text .= " {$today}";
+        }
+
+        // If query is too short, use original message
+        if (mb_strlen($text) < 5) {
             $text = preg_replace('/^(hey\s+)?(cil|bocil|cimol|mol)\s*[,.]?\s*/i', '', trim($messageText));
         }
+
+        Logger::debug("Firecrawl query extracted", [
+            'original' => $messageText,
+            'query' => $text,
+        ]);
 
         return trim($text);
     }
@@ -98,7 +111,7 @@ class FirecrawlSearch
             return null;
         }
 
-        Logger::info("Firecrawl search", ['query' => $query]);
+        Logger::info("Firecrawl search starting", ['query' => $query]);
 
         $startTime = microtime(true);
 
@@ -116,29 +129,38 @@ class FirecrawlSearch
         $response = $this->request($payload);
         $elapsed = round((microtime(true) - $startTime) * 1000);
 
-        if (!$response || !isset($response['data'])) {
-            Logger::error("Firecrawl search failed", [
+        if (!$response) {
+            Logger::error("Firecrawl: no response", ['query' => $query, 'elapsed_ms' => $elapsed]);
+            return null;
+        }
+
+        if (isset($response['error'])) {
+            Logger::error("Firecrawl API error", [
+                'query' => $query,
+                'error' => $response['error'],
+                'elapsed_ms' => $elapsed,
+            ]);
+            return null;
+        }
+
+        if (!isset($response['data']) || !is_array($response['data']) || empty($response['data'])) {
+            Logger::warning("Firecrawl: empty results", [
                 'query' => $query,
                 'elapsed_ms' => $elapsed,
-                'error' => $response['error'] ?? 'unknown',
+                'response_keys' => is_array($response) ? array_keys($response) : 'not_array',
             ]);
             return null;
         }
 
         $results = $response['data'];
 
-        if (empty($results)) {
-            Logger::info("Firecrawl: no results", ['query' => $query]);
-            return null;
-        }
-
         Logger::info("Firecrawl search success", [
             'query' => $query,
             'results' => count($results),
             'elapsed_ms' => $elapsed,
+            'first_title' => $results[0]['title'] ?? 'N/A',
         ]);
 
-        // Format results for AI context
         return $this->formatResults($query, $results);
     }
 
@@ -147,9 +169,12 @@ class FirecrawlSearch
      */
     private function formatResults(string $query, array $results): string
     {
+        $today = date('j F Y');
+
         $lines = [
-            "HASIL PENCARIAN WEB untuk \"{$query}\":",
-            "(Data real-time dari internet, gunakan ini untuk menjawab)",
+            "=== HASIL PENCARIAN WEB (real-time dari internet, tanggal hari ini: {$today}) ===",
+            "Query: \"{$query}\"",
+            "Jumlah hasil: " . count($results),
             "",
         ];
 
@@ -159,12 +184,12 @@ class FirecrawlSearch
             $url = $result['url'] ?? '';
             $markdown = $result['markdown'] ?? $result['description'] ?? '';
 
-            // Truncate markdown to avoid token explosion
-            if (mb_strlen($markdown) > 800) {
-                $markdown = mb_substr($markdown, 0, 800) . '...';
+            // Truncate markdown to avoid token explosion (keep more for better context)
+            if (mb_strlen($markdown) > 1000) {
+                $markdown = mb_substr($markdown, 0, 1000) . '... [dipotong]';
             }
 
-            $lines[] = "--- Hasil {$num}: {$title} ---";
+            $lines[] = "[Hasil {$num}] {$title}";
             if (!empty($url)) {
                 $lines[] = "Sumber: {$url}";
             }
@@ -174,8 +199,14 @@ class FirecrawlSearch
             $lines[] = "";
         }
 
-        $lines[] = "---";
-        $lines[] = "INSTRUKSI: Rangkum informasi di atas dengan gaya bahasa kamu (casual, Gen Z). Jangan copy-paste mentah. Sebutkan sumber jika relevan.";
+        $lines[] = "=== AKHIR HASIL PENCARIAN ===";
+        $lines[] = "";
+        $lines[] = "INSTRUKSI PENTING:";
+        $lines[] = "- Data di atas adalah HASIL PENCARIAN INTERNET REAL-TIME, BUKAN dari pengetahuan kamu.";
+        $lines[] = "- GUNAKAN data di atas untuk menjawab pertanyaan user.";
+        $lines[] = "- JANGAN mengarang atau menambah informasi yang tidak ada di hasil pencarian.";
+        $lines[] = "- Rangkum dengan gaya bahasa kamu (casual, Gen Z) tapi FAKTA harus dari data di atas.";
+        $lines[] = "- Sebutkan sumber berita jika relevan (nama media, bukan URL panjang).";
 
         return implode("\n", $lines);
     }
@@ -190,7 +221,7 @@ class FirecrawlSearch
             CURLOPT_URL => self::API_URL,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
-            CURLOPT_TIMEOUT => 30,
+            CURLOPT_TIMEOUT => 45,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_POSTFIELDS => json_encode($data),
             CURLOPT_HTTPHEADER => [
@@ -205,10 +236,11 @@ class FirecrawlSearch
         $response = curl_exec($ch);
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
+        $errno = curl_errno($ch);
         curl_close($ch);
 
         if ($error) {
-            Logger::error("Firecrawl curl error: {$error}");
+            Logger::error("Firecrawl curl error: [{$errno}] {$error}");
             return null;
         }
 
@@ -216,7 +248,14 @@ class FirecrawlSearch
 
         if ($httpCode >= 400) {
             Logger::error("Firecrawl HTTP {$httpCode}", [
-                'error' => $result['error'] ?? mb_substr($response, 0, 300),
+                'error' => $result['error'] ?? mb_substr($response, 0, 500),
+            ]);
+            return $result; // Return so caller can see error message
+        }
+
+        if ($result === null && !empty($response)) {
+            Logger::error("Firecrawl: invalid JSON response", [
+                'raw' => mb_substr($response, 0, 300),
             ]);
             return null;
         }
@@ -233,10 +272,11 @@ class FirecrawlSearch
             return ['success' => false, 'message' => 'Firecrawl API key is empty.'];
         }
 
-        // Direct API call with minimal query
         $response = $this->request([
-            'query' => 'Indonesia news today',
+            'query' => 'berita Indonesia hari ini ' . date('j F Y'),
             'limit' => 2,
+            'lang' => 'id',
+            'country' => 'id',
         ]);
 
         if ($response === null) {
@@ -247,9 +287,10 @@ class FirecrawlSearch
         }
 
         if (isset($response['error'])) {
+            $errMsg = is_string($response['error']) ? $response['error'] : json_encode($response['error']);
             return [
                 'success' => false,
-                'message' => 'Firecrawl error: ' . (is_string($response['error']) ? $response['error'] : json_encode($response['error'])),
+                'message' => 'Firecrawl error: ' . $errMsg,
             ];
         }
 
@@ -258,14 +299,14 @@ class FirecrawlSearch
             $firstTitle = $response['data'][0]['title'] ?? 'N/A';
             return [
                 'success' => true,
-                'message' => "Firecrawl connected! Got {$count} results. First: \"{$firstTitle}\"",
+                'message' => "Firecrawl connected! Got {$count} results.",
+                'preview' => "First result: \"{$firstTitle}\"",
             ];
         }
 
         return [
             'success' => false,
             'message' => 'Firecrawl: unexpected response format.',
-            'debug' => mb_substr(json_encode($response), 0, 500),
         ];
     }
 }
