@@ -113,6 +113,13 @@ class MessageHandler
         $aiMessages = $this->buildAIMessages($messageData, $triggerResult);
 
         // Get AI response
+        $providerType = AIFactory::getProviderType();
+        Logger::info("Using AI provider", [
+            'type' => $providerType,
+            'class' => get_class($this->ai),
+            'web_search' => Config::get('ai_web_search', false),
+            'model' => Config::get('ai_model', ''),
+        ]);
         $aiResult = $this->ai->chat($aiMessages);
 
         if (!$aiResult || empty($aiResult['content'])) {
