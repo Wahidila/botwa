@@ -52,8 +52,58 @@ $botEnabled = \BotWA\Config::get('bot_enabled', false);
 $wahaUrl = $_ENV['WAHA_API_URL'] ?? 'Not configured';
 $aiModel = \BotWA\Config::get('ai_model', 'Unknown');
 
+// Handle POST actions (clear history, etc)
+$actionMessage = '';
+$actionType = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!\BotWA\AdminAuth::verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        $actionMessage = 'Invalid CSRF token';
+        $actionType = 'error';
+    } else {
+        $action = $_POST['action'] ?? '';
+        if ($action === 'clear_conversation_history') {
+            $db->query("TRUNCATE TABLE conversation_history");
+            $actionMessage = 'Conversation history cleared!';
+            $actionType = 'success';
+        } elseif ($action === 'clear_chat_logs') {
+            $db->query("TRUNCATE TABLE chat_logs");
+            $actionMessage = 'Chat logs cleared!';
+            $actionType = 'success';
+            $recentLogs = [];
+            $totalMessagesToday = 0;
+            $totalResponses = 0;
+        } elseif ($action === 'clear_all') {
+            $db->query("TRUNCATE TABLE conversation_history");
+            $db->query("TRUNCATE TABLE chat_logs");
+            $actionMessage = 'All history cleared! Bot starts fresh.';
+            $actionType = 'success';
+            $recentLogs = [];
+            $totalMessagesToday = 0;
+            $totalResponses = 0;
+        }
+    }
+}
+
+// Counts for maintenance section
+try {
+    $conversationCount = $db->count('conversation_history');
+} catch (\Exception $e) {
+    $conversationCount = 0;
+}
+try {
+    $chatLogCount = $db->count('chat_logs');
+} catch (\Exception $e) {
+    $chatLogCount = 0;
+}
+
 adminHeader('Dashboard', 'dashboard');
 ?>
+
+<?php if ($actionMessage): ?>
+    <div data-flash class="mb-6 px-4 py-3 rounded-lg text-sm font-medium <?= $actionType === 'success' ? 'bg-green-900/50 text-green-400 border border-green-700' : 'bg-red-900/50 text-red-400 border border-red-700' ?>">
+        <?= htmlspecialchars($actionMessage) ?>
+    </div>
+<?php endif; ?>
 
 <!-- Stats Cards -->
 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
@@ -270,6 +320,85 @@ adminHeader('Dashboard', 'dashboard');
                 </a>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Maintenance Section -->
+<div class="mt-6 bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-700">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-red-500/20 flex items-center justify-center">
+                <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-base font-semibold text-white">Maintenance</h3>
+                <p class="text-xs text-gray-400 mt-0.5">Clear history and reset bot memory</p>
+            </div>
+        </div>
+    </div>
+    <div class="p-5">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+            <!-- Conversation History Count -->
+            <div class="bg-gray-900 rounded-lg p-4">
+                <p class="text-xs text-gray-400 mb-1">Conversation History</p>
+                <p class="text-2xl font-bold text-white"><?= number_format($conversationCount) ?></p>
+                <p class="text-xs text-gray-500 mt-1">Messages stored for AI context</p>
+            </div>
+            <!-- Chat Logs Count -->
+            <div class="bg-gray-900 rounded-lg p-4">
+                <p class="text-xs text-gray-400 mb-1">Chat Logs</p>
+                <p class="text-2xl font-bold text-white"><?= number_format($chatLogCount) ?></p>
+                <p class="text-xs text-gray-500 mt-1">All incoming/outgoing messages logged</p>
+            </div>
+            <!-- Memory Count -->
+            <div class="bg-gray-900 rounded-lg p-4">
+                <p class="text-xs text-gray-400 mb-1">Active Memories</p>
+                <p class="text-2xl font-bold text-white"><?= number_format($activeMemories) ?></p>
+                <p class="text-xs text-gray-500 mt-1">Facts & preferences stored</p>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+            <!-- Clear Conversation History -->
+            <form method="POST" onsubmit="return confirm('Clear conversation history? Bot will lose all chat context but personality stays.')">
+                <input type="hidden" name="csrf_token" value="<?= \BotWA\AdminAuth::generateCsrfToken() ?>">
+                <input type="hidden" name="action" value="clear_conversation_history">
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 text-sm font-medium rounded-lg border border-amber-700/50 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Clear Conversation History
+                </button>
+            </form>
+
+            <!-- Clear Chat Logs -->
+            <form method="POST" onsubmit="return confirm('Clear all chat logs? This cannot be undone.')">
+                <input type="hidden" name="csrf_token" value="<?= \BotWA\AdminAuth::generateCsrfToken() ?>">
+                <input type="hidden" name="action" value="clear_chat_logs">
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 text-sm font-medium rounded-lg border border-amber-700/50 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Clear Chat Logs
+                </button>
+            </form>
+
+            <!-- Clear All -->
+            <form method="POST" onsubmit="return confirm('CLEAR EVERYTHING? This will reset conversation history AND chat logs. Bot starts completely fresh. Are you sure?')">
+                <input type="hidden" name="csrf_token" value="<?= \BotWA\AdminAuth::generateCsrfToken() ?>">
+                <input type="hidden" name="action" value="clear_all">
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 text-sm font-medium rounded-lg border border-red-700/50 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Clear All (Fresh Start)
+                </button>
+            </form>
+        </div>
+
+        <p class="mt-3 text-xs text-gray-500">Note: Clearing conversation history resets the bot's chat context. Personality, skills, memories, and triggers are NOT affected.</p>
     </div>
 </div>
 
