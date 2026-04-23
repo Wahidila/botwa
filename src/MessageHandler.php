@@ -5,7 +5,7 @@ namespace BotWA;
 class MessageHandler
 {
     private WahaClient $waha;
-    private AIProvider $ai;
+    private AIProvider|KimiProvider $ai;
     private PersonalityEngine $personality;
     private MemoryManager $memory;
     private SkillManager $skills;
@@ -16,7 +16,7 @@ class MessageHandler
     public function __construct()
     {
         $this->waha = new WahaClient();
-        $this->ai = new AIProvider();
+        $this->ai = AIFactory::create();
         $this->personality = new PersonalityEngine();
         $this->memory = new MemoryManager();
         $this->skills = new SkillManager();

@@ -47,7 +47,9 @@ INSERT INTO settings (setting_key, setting_value, setting_type, category, descri
 ('ai_max_tokens', '1024', 'number', 'ai_provider', 'Maximum response tokens'),
 ('ai_top_p', '0.95', 'number', 'ai_provider', 'Top-p sampling'),
 ('ai_frequency_penalty', '0.3', 'number', 'ai_provider', 'Frequency penalty to reduce repetition'),
-('ai_presence_penalty', '0.3', 'number', 'ai_provider', 'Presence penalty for topic diversity');
+('ai_presence_penalty', '0.3', 'number', 'ai_provider', 'Presence penalty for topic diversity'),
+('ai_provider_type', 'openai_compatible', 'string', 'ai_provider', 'Provider type: openai_compatible or kimi'),
+('ai_web_search', '0', 'boolean', 'ai_provider', 'Enable web search (Kimi $web_search only)');
 
 /* WAHA settings */
 INSERT INTO settings (setting_key, setting_value, setting_type, category, description) VALUES
